@@ -1,0 +1,27 @@
+{
+  "name": "trapwords_bot",
+  "version": "0.0.1",
+  "description": "Telegram bot to play trapwords",
+  "main": "bot.js",
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dormlaw/trapwords_bot.git"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "trapwords"
+  ],
+  "author": "dormlaw",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dormlaw/trapwords_bot/issues"
+  },
+  "homepage": "https://github.com/dormlaw/trapwords_bot#readme",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "node-telegram-bot-api": "^0.61.0"
+  }
+}
