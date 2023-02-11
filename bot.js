@@ -11,6 +11,8 @@ const players = new Map();
 
 bot.onText(/\/test/, (msg) => {
   console.log(sessions)
+  console.log(players)
+
 });
 
 bot.onText(/\/start/, (msg) => {
@@ -36,21 +38,18 @@ bot.onText(/\/new/, (msg) => {
   const chatId = msg.chat.id;
 
   let sessionCode = "";
-  let check = false;
-  for (let games of sessions) {
-    if (games[1].toString() === chatId) { check = true, sessionCode = games[0] }
-  }
-  if (!check) {
+  if (!players.has(chatId)) {
     const possibleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     for (let i = 0; i < 6; i++) {
       sessionCode += possibleChars.charAt(Math.floor(Math.random() * possibleChars.length));
     };
     let game = {
-      toString: () => chatId,
-      players: [chatId],
-      team1: [],
-      team2: [],
+      players: new Map,
+      team1: new Map,
+      team2: new Map,
     }
+    game.players.set(chatId, msg.chat.username)
+    players.set(chatId, sessionCode);
     sessions.set(sessionCode, game);
 
     bot.sendMessage(chatId, `Игровая сессия создана. Поделитесь этим токеном с остальными участниками игры: \`${sessionCode}\`.`, {
@@ -64,7 +63,8 @@ bot.onText(/\/new/, (msg) => {
         }
       });
   } else {
-    bot.sendMessage(chatId, `Вы уже являетесь создателем игры: \`${sessionCode}\`\n`+ messages.team_select.text,
+    sessionCode = players.get(chatId)
+    bot.sendMessage(chatId, `Вы уже являетесь создателем игры: \`${sessionCode}\`\n` + messages.team_select.text,
       {
         parse_mode: 'Markdown',
         reply_markup: {
@@ -77,18 +77,18 @@ bot.onText(/\/new/, (msg) => {
 bot.onText(/\/join (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const session = match[1]
-  const players = sessions.get(session).players
 
-  if (!players.includes(chatId)) {
-    players.push(chatId);
-    bot.sendMessage(chatId, `Вы присоединились к игре: \`${session}\`.\n`+ messages.team_select.text, {
+  if (!players.has(chatId)) {
+    players.set(chatId, session);
+    sessions.get(session).players.set(chatId, msg.chat.username);
+    bot.sendMessage(chatId, `Вы присоединились к игре: \`${session}\`.\n` + messages.team_select.text, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: messages.team_select.keyboard
       }
     });
   } else {
-    bot.sendMessage(chatId, `Вы уже находитесь в игре: \`${session}\`\n`+ messages.team_select.text, {
+    bot.sendMessage(chatId, `Вы уже находитесь в игре: \`${session}\`\n` + messages.team_select.text, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: messages.team_select.keyboard
@@ -101,6 +101,11 @@ bot.on('callback_query', (callbackQuery) => {
   const action = callbackQuery.data;
   const msg = callbackQuery.message;
   const chatId = msg.chat.id;
+  const sessionCode = players.get(chatId);
+  const game = sessions.get(sessionCode);
+
+  let team1Players = []
+  let team2Players = []
 
   switch (action) {
     //===Rules===
@@ -125,14 +130,52 @@ bot.on('callback_query', (callbackQuery) => {
 
     //===Teams===
     case 'team1':
-      sessions.get()
-      bot.editMessageText('Участники:', {
-        chat_id: chatId,
-        message_id: msg.message_id,
-        reply_markup: {
-          inline_keyboard: messages.team_ready.keyboard
-        }
-      });
+      if (!game.team1.has(chatId) && !game.team2.has(chatId)) {
+        game.team1.set(chatId, game.players.get(chatId))
+        for(let player of game.team1.values()) {
+          team1Players.push(player);
+        };
+        for(let player of game.team2.values()) {
+          team2Players.push(player);
+        };
+        bot.editMessageText(`Комманда 👻: ${team1Players.toString()}\nКомманда 👽: ${team2Players.toString()}`, {
+          chat_id: chatId,
+          message_id: msg.message_id,
+          reply_markup: {
+            inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+      } else {
+        bot.sendMessage(chatId, 'Вы уже выбрали команду', {
+          reply_markup: {
+            inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+      }
+      break;
+    case 'team2':
+      if (!game.team1.has(chatId) && !game.team2.has(chatId)) {
+        game.team2.set(chatId, game.players.get(chatId))
+        for(let player of game.team1.values()) {
+          team1Players.push(player);
+        };
+        for(let player of game.team2.values()) {
+          team2Players.push(player);
+        };
+        bot.editMessageText(`Комманда 👻: ${team1Players.toString()}\nКомманда 👽: ${team2Players.toString()}`, {
+          chat_id: chatId,
+          message_id: msg.message_id,
+          reply_markup: {
+            inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+      } else {
+        bot.sendMessage(chatId, 'Вы уже выбрали команду', {
+          reply_markup: {
+            inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+      }
       break;
   }
 });

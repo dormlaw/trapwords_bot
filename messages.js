@@ -80,8 +80,8 @@ const messages =  {
         text: 'Выберите команду',
         keyboard: [
             [
-                {text: 'Комманда 👻', callback_data: 'team1'},
-                {text: 'Комманда 👽', callback_data: 'team2'}
+                {text: 'Команда 👻', callback_data: 'team1'},
+                {text: 'Команда 👽', callback_data: 'team2'}
             ]
         ]
     },
