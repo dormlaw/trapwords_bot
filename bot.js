@@ -117,7 +117,6 @@ bot.onText(/\/join/, (msg) => {
   });
 });
 
-
 bot.on('callback_query', (callbackQuery) => {
   const action = callbackQuery.data;
   const msg = callbackQuery.message;

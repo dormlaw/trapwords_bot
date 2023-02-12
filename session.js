@@ -3,7 +3,9 @@ class Session {
         this.players = new Map;
         this.team1 = [];
         this.team2 = [];
-        this.leaders = [];
+        this.counter = [];
+        this.lobby = [];
+        this.ready = []
         if (id && name) {
             this.addPlayer(id, name);
         }
@@ -41,13 +43,48 @@ class Session {
     name(id) {
         return this.players.get(id)
     }
+    leader(team) {
+        if (this.counter === 0) {
+            this.shuffleTeams()
+        }
+        const i = this.counter % team.length;
+        return leader = team[i]
+    }
+    agree(type) {
+        if (type === 'check') {
+            let isAgreed = false
+            if (this.ready.length === this.players.size) {
+                isAgreed = true
+            }
+            return isAgreed
+        }
+        if (type === 'all') {
+            for (let player of this.players.keys()) {
+                this.lobby.push(player)
+            }
+        }
+        if (Array.isArray(type)) {
+            for (let i = 0; i = type.length - 1; i++) {
+                this.lobby.push(type[i])
+            }
+        }
+    }
+    shuffleTeams() {
+        function shuffle(array) {
+            for (let i = array.team1.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        shuffle([1, 2])
+    }
 }
 
-// const arg = new Session('1235', 'oleg')
+const arg = new Session('1235', 'oleg')
 // arg.toTeam('1235', 1)
 
+// arg.agreed('check')
 
-
-// console.log(Session.name())
+console.log(arg.agree('check'))
 
 module.exports = Session;
