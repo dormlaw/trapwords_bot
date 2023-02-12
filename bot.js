@@ -4,7 +4,8 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TelegramBot = require('node-telegram-bot-api');
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-const { messages } = require('./messages')
+const { messages } = require('./messages');
+const Session = require('./session');
 
 const sessions = new Map();
 const players = new Map();
@@ -12,7 +13,6 @@ const players = new Map();
 bot.onText(/\/test/, (msg) => {
   console.log(sessions)
   console.log(players)
-
 });
 
 bot.onText(/\/start/, (msg) => {
@@ -53,18 +53,10 @@ bot.onText(/\/leave/, (msg) => {
 bot.onText(/\/new/, (msg) => {
   const chatId = msg.chat.id;
 
-  let sessionCode = "";
   if (!players.has(chatId)) {
-    const possibleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    for (let i = 0; i < 6; i++) {
-      sessionCode += possibleChars.charAt(Math.floor(Math.random() * possibleChars.length));
-    };
-    let game = {
-      players: new Map,
-      team1: new Map,
-      team2: new Map,
-    }
-    game.players.set(chatId, msg.chat.username)
+    Session.code()
+    const sessionCode = Session.code();
+    let game = new Session(chatId, msg.chat.username);
     players.set(chatId, sessionCode);
     sessions.set(sessionCode, game);
 
@@ -79,7 +71,7 @@ bot.onText(/\/new/, (msg) => {
         }
       });
   } else {
-    sessionCode = players.get(chatId)
+    const sessionCode = players.get(chatId)
     bot.sendMessage(chatId, `Вы уже являетесь создателем игры: \`${sessionCode}\`\n` + messages.team_select.text,
       {
         parse_mode: 'Markdown',
@@ -92,11 +84,12 @@ bot.onText(/\/new/, (msg) => {
 
 bot.onText(/\/join (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
-  const session = match[1]
+  const session = match[1];
+  const game = sessions.get(session);
 
   if (!players.has(chatId) && sessions.has(session)) {
     players.set(chatId, session);
-    sessions.get(session).players.set(chatId, msg.chat.username);
+    game.addPlayer(chatId, msg.chat.username);
     bot.sendMessage(chatId, `Вы присоединились к игре: \`${session}\`.\n` + messages.team_select.text, {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -124,8 +117,17 @@ bot.on('callback_query', (callbackQuery) => {
   const sessionCode = players.get(chatId);
   const game = sessions.get(sessionCode);
 
-  let team1Players = []
-  let team2Players = []
+  const teamPlayers = ()=> {
+    let players = [[], []]
+    game.team1.forEach(element => {
+      players[0].push(game.name(element))
+    });
+    game.team2.forEach(element => {
+      players[1].push(game.name(element))
+    });
+    return players
+  }
+  let teams
 
   switch (action) {
     //===Rules===
@@ -150,15 +152,10 @@ bot.on('callback_query', (callbackQuery) => {
 
     //===Teams===
     case 'team1':
-      if (!game.team1.has(chatId) && !game.team2.has(chatId)) {
-        game.team1.set(chatId, game.players.get(chatId))
-        for (let player of game.team1.values()) {
-          team1Players.push(player);
-        };
-        for (let player of game.team2.values()) {
-          team2Players.push(player);
-        };
-        bot.editMessageText(`Комманда 👻: ${team1Players.toString()}\nКомманда 👽: ${team2Players.toString()}`, {
+      if (!game.team1.includes(chatId) && !game.team2.includes(chatId)) {
+        game.toTeam(chatId, 1);
+        teams = teamPlayers();
+        bot.editMessageText(`Комманда 👻: ${teams[0].toString()}\nКомманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
           message_id: msg.message_id,
           reply_markup: {
@@ -174,15 +171,10 @@ bot.on('callback_query', (callbackQuery) => {
       }
       break;
     case 'team2':
-      if (!game.team1.has(chatId) && !game.team2.has(chatId)) {
-        game.team2.set(chatId, game.players.get(chatId))
-        for (let player of game.team1.values()) {
-          team1Players.push(player);
-        };
-        for (let player of game.team2.values()) {
-          team2Players.push(player);
-        };
-        bot.editMessageText(`Команда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+      if (!game.team1.includes(chatId) && !game.team2.includes(chatId)) {
+        game.toTeam(chatId, 2);
+        teams = teamPlayers();
+        bot.editMessageText(`Команда 👻: ${teams[0].toString()}\nКоманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
           message_id: msg.message_id,
           reply_markup: {
@@ -198,17 +190,12 @@ bot.on('callback_query', (callbackQuery) => {
       }
       break;
     case 'team_switch':
-      if (game.team1.has(chatId)) { game.team1.delete(chatId) }
-      if (game.team2.has(chatId)) { game.team2.delete(chatId) }
-      for (let player of game.team1.values()) {
-        team1Players.push(player);
-      };
-      for (let player of game.team2.values()) {
-        team2Players.push(player);
-      };
+      if (game.team1.includes(chatId)) { delete game.team1[game.team1.indexOf(chatId)] }
+      if (game.team2.includes(chatId)) { delete game.team2[game.team2.indexOf(chatId)] }
+      teams = teamPlayers();
       bot.editMessageText(
         messages.team_select.text +
-        `\nКоманда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+        `\nКоманда 👻: ${teams[0].toString()}\nКоманда 👽: ${teams[1].toString()}`, {
         chat_id: chatId,
         message_id: msg.message_id,
         reply_markup: {
@@ -217,18 +204,11 @@ bot.on('callback_query', (callbackQuery) => {
       });
       break;
     case 'team_ready':
-      for (let player of game.team1.values()) {
-        team1Players.push(player);
-      };
-      for (let player of game.team2.values()) {
-        team2Players.push(player);
-      };
-      if ((game.team1.size >= 1) &&
-          (game.team2.size >= 1) &&
-          (((game.team1.size % game.team2.size) <= 1) || ((game.team2.size % game.team1.size) <= 1))) {
+      teams = teamPlayers();
+      if (game.fairPlay()) {
         bot.editMessageText(
           messages.team_ready.text +
-          `\nКомманда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+          `\nКомманда 👻: ${teams[0].toString()}\nКоманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
           message_id: msg.message_id,
           reply_markup: {
@@ -238,7 +218,7 @@ bot.on('callback_query', (callbackQuery) => {
       } else {
         bot.editMessageText(
           'Команды должны быть примерно равны и иметь минимум по 2 игрока' +
-          `\nКоманда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+          `\nКоманда 👻: ${teams[0].toString()}\nКоманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
           message_id: msg.message_id,
           reply_markup: {
