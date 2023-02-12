@@ -82,33 +82,41 @@ bot.onText(/\/new/, (msg) => {
   }
 });
 
-bot.onText(/\/join (.+)/, (msg, match) => {
+bot.onText(/\/join/, (msg) => {
   const chatId = msg.chat.id;
-  const session = match[1];
-  const game = sessions.get(session);
 
-  if (!players.has(chatId) && sessions.has(session)) {
-    players.set(chatId, session);
-    game.addPlayer(chatId, msg.chat.username);
-    bot.sendMessage(chatId, `Вы присоединились к игре: \`${session}\`.\n` + messages.team_select.text, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: messages.team_select.keyboard
-      }
-    });
-  } else if (sessions.has(session)) {
-    bot.sendMessage(chatId, `Вы уже находитесь в игре: \`${session}\`\n` + messages.team_select.text, {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: messages.team_select.keyboard
-      }
-    });
-  } else {
-    bot.sendMessage(chatId, 'Такой игры не существует', {
-      parse_mode: 'Markdown',
-    });
-  }
+  bot.sendMessage(chatId, 'Введите токен', {
+    parse_mode: 'Markdown',
+  });
+  
+  bot.once("text", (msg) => {
+    const session = msg.text;
+    const game = sessions.get(session);
+  
+    if (!players.has(chatId) && sessions.has(session)) {
+      players.set(chatId, session);
+      game.addPlayer(chatId, msg.chat.username);
+      bot.sendMessage(chatId, `Вы присоединились к игре: \`${session}\`.\n` + messages.team_select.text, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: messages.team_select.keyboard
+        }
+      });
+    } else if (sessions.has(session)) {
+      bot.sendMessage(chatId, `Вы уже находитесь в игре: \`${session}\`\n` + messages.team_select.text, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: messages.team_select.keyboard
+        }
+      });
+    } else {
+      bot.sendMessage(chatId, 'Такой игры не существует', {
+        parse_mode: 'Markdown',
+      });
+    }
+  });
 });
+
 
 bot.on('callback_query', (callbackQuery) => {
   const action = callbackQuery.data;
