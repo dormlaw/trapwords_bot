@@ -34,6 +34,22 @@ bot.onText(/\/rules/, (msg) => {
   });
 });
 
+bot.onText(/\/leave/, (msg) => {
+  const chatId = msg.chat.id;
+
+  if (players.has(chatId)) {
+    sessions.delete(players.get(chatId));
+    players.delete(chatId);
+    bot.sendMessage(chatId, 'Вы покинули игру', {
+      parse_mode: 'Markdown',
+    });
+  } else {
+    bot.sendMessage(chatId, 'Вы не состоите в игре', {
+      parse_mode: 'Markdown',
+    });
+  }
+});
+
 bot.onText(/\/new/, (msg) => {
   const chatId = msg.chat.id;
 
@@ -78,7 +94,7 @@ bot.onText(/\/join (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const session = match[1]
 
-  if (!players.has(chatId)) {
+  if (!players.has(chatId) && sessions.has(session)) {
     players.set(chatId, session);
     sessions.get(session).players.set(chatId, msg.chat.username);
     bot.sendMessage(chatId, `Вы присоединились к игре: \`${session}\`.\n` + messages.team_select.text, {
@@ -87,12 +103,16 @@ bot.onText(/\/join (.+)/, (msg, match) => {
         inline_keyboard: messages.team_select.keyboard
       }
     });
-  } else {
+  } else if (sessions.has(session)) {
     bot.sendMessage(chatId, `Вы уже находитесь в игре: \`${session}\`\n` + messages.team_select.text, {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: messages.team_select.keyboard
       }
+    });
+  } else {
+    bot.sendMessage(chatId, 'Такой игры не существует', {
+      parse_mode: 'Markdown',
     });
   }
 });
@@ -132,10 +152,10 @@ bot.on('callback_query', (callbackQuery) => {
     case 'team1':
       if (!game.team1.has(chatId) && !game.team2.has(chatId)) {
         game.team1.set(chatId, game.players.get(chatId))
-        for(let player of game.team1.values()) {
+        for (let player of game.team1.values()) {
           team1Players.push(player);
         };
-        for(let player of game.team2.values()) {
+        for (let player of game.team2.values()) {
           team2Players.push(player);
         };
         bot.editMessageText(`Комманда 👻: ${team1Players.toString()}\nКомманда 👽: ${team2Players.toString()}`, {
@@ -156,13 +176,13 @@ bot.on('callback_query', (callbackQuery) => {
     case 'team2':
       if (!game.team1.has(chatId) && !game.team2.has(chatId)) {
         game.team2.set(chatId, game.players.get(chatId))
-        for(let player of game.team1.values()) {
+        for (let player of game.team1.values()) {
           team1Players.push(player);
         };
-        for(let player of game.team2.values()) {
+        for (let player of game.team2.values()) {
           team2Players.push(player);
         };
-        bot.editMessageText(`Комманда 👻: ${team1Players.toString()}\nКомманда 👽: ${team2Players.toString()}`, {
+        bot.editMessageText(`Команда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
           chat_id: chatId,
           message_id: msg.message_id,
           reply_markup: {
@@ -171,6 +191,56 @@ bot.on('callback_query', (callbackQuery) => {
         });
       } else {
         bot.sendMessage(chatId, 'Вы уже выбрали команду', {
+          reply_markup: {
+            inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+      }
+      break;
+    case 'team_switch':
+      if (game.team1.has(chatId)) { game.team1.delete(chatId) }
+      if (game.team2.has(chatId)) { game.team2.delete(chatId) }
+      for (let player of game.team1.values()) {
+        team1Players.push(player);
+      };
+      for (let player of game.team2.values()) {
+        team2Players.push(player);
+      };
+      bot.editMessageText(
+        messages.team_select.text +
+        `\nКоманда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+        chat_id: chatId,
+        message_id: msg.message_id,
+        reply_markup: {
+          inline_keyboard: messages.team_select.keyboard
+        }
+      });
+      break;
+    case 'team_ready':
+      for (let player of game.team1.values()) {
+        team1Players.push(player);
+      };
+      for (let player of game.team2.values()) {
+        team2Players.push(player);
+      };
+      if ((game.team1.size >= 1) &&
+          (game.team2.size >= 1) &&
+          (((game.team1.size % game.team2.size) <= 1) || ((game.team2.size % game.team1.size) <= 1))) {
+        bot.editMessageText(
+          messages.team_ready.text +
+          `\nКомманда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+          chat_id: chatId,
+          message_id: msg.message_id,
+          reply_markup: {
+            inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+      } else {
+        bot.editMessageText(
+          'Команды должны быть примерно равны и иметь минимум по 2 игрока' +
+          `\nКоманда 👻: ${team1Players.toString()}\nКоманда 👽: ${team2Players.toString()}`, {
+          chat_id: chatId,
+          message_id: msg.message_id,
           reply_markup: {
             inline_keyboard: messages.team_ready.keyboard
           }
