@@ -91,6 +91,13 @@ const messages = {
       [{ text: 'Сменить команду', callback_data: 'team_switch' }],
       [{ text: 'Готов', callback_data: 'team_ready' }]
     ]
+  },
+  game_start: {
+    text: 'Начало игры',
+    keyboard: [
+      [{ text: 'нерабочая кнопка1', callback_data: 'btn1' }],
+      [{ text: 'нерабочая кнопка2', callback_data: 'btn2' }]
+    ]
   }
 };
 

@@ -1,10 +1,12 @@
+'use strict'
 class Session {
     constructor(id, name) {
         this.players = new Map;
-        this.team1 = [];
-        this.team2 = [];
+        this.teams = [ [],[] ];
+        this.leaders = [];
         this.counter = [];
         this.lobby = [];
+        //сделать это через Set
         this.ready = []
         if (id && name) {
             this.addPlayer(id, name);
@@ -22,33 +24,21 @@ class Session {
         }
         return sessionCode
     }
-
     addPlayer(id, name) {
         this.players.set(id, name)
-    }
-    toTeam(id, team) {
-        const teams = [this.team1, this.team2];
-        teams[team - 1].push(id);
-    }
-    fairPlay() {
-        let isFair = false
-        if (
-            (this.team1.length >= 2) &&
-            (this.team2.length >= 2) &&
-            (((this.team1.length % this.team2.length) <= 1) || ((this.team2.length % this.team1.length) <= 1))) {
-            fair = true
-        }
-        return isFair
     }
     name(id) {
         return this.players.get(id)
     }
-    leader(team) {
-        if (this.counter === 0) {
-            this.shuffleTeams()
+    fairPlay() {
+        let isFair = false
+        if (
+            (this.teams[0].length >= 2) &&
+            (this.teams[1].length >= 2) &&
+            (((this.teams[0].length % this.teams[1].length) <= 1) || ((this.teams[1].length % this.teams[0].length) <= 1))) {
+            isFair = true
         }
-        const i = this.counter % team.length;
-        return leader = team[i]
+        return isFair
     }
     agree(type) {
         if (type === 'check') {
@@ -69,22 +59,29 @@ class Session {
             }
         }
     }
-    shuffleTeams() {
-        function shuffle(array) {
-            for (let i = array.team1.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
+    switchLeaders() {
+        if (this.counter === 0) {
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
             }
+            shuffle(this.teams[0]);
+            shuffle(this.teams[1]);
         }
-        shuffle([1, 2])
+        for (let i = 0; i < 2; i++) {
+            const k = this.counter % teams[i].length;
+            this.leaders[i] = teams[i][k]
+        }
     }
 }
 
-const arg = new Session('1235', 'oleg')
+// const arg = new Session('1235', 'oleg')
 // arg.toTeam('1235', 1)
 
 // arg.agreed('check')
 
-console.log(arg.agree('check'))
+// console.log(arg.agree('check'))
 
 module.exports = Session;

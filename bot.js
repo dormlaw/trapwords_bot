@@ -1,3 +1,4 @@
+'use strict'
 require('dotenv').config();
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -54,22 +55,24 @@ bot.onText(/\/new/, (msg) => {
   const chatId = msg.chat.id;
 
   if (!players.has(chatId)) {
-    Session.code()
-    const sessionCode = Session.code();
-    let game = new Session(chatId, msg.chat.username);
-    players.set(chatId, sessionCode);
-    sessions.set(sessionCode, game);
+    bot.sendMessage(chatId, 'Введите название игровой сессии:');
+    bot.once('message', (msg) => {
+      const sessionCode = msg.text;
+      const game = new Session(chatId, msg.chat.username);
+      players.set(chatId, sessionCode);
+      sessions.set(sessionCode, game);
 
-    bot.sendMessage(chatId, `Игровая сессия создана. Поделитесь этим токеном с остальными участниками игры: \`${sessionCode}\`.`, {
-      parse_mode: 'Markdown',
-    });
-    bot.sendMessage(chatId, messages.team_select.text,
-      {
+      bot.sendMessage(chatId, `Игровая сессия создана. Поделитесь этим токеном с остальными участниками игры: \`${sessionCode}\`.`, {
         parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: messages.team_select.keyboard
-        }
       });
+      bot.sendMessage(chatId, messages.team_select.text,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: messages.team_select.keyboard
+          }
+        });
+    });
   } else {
     const sessionCode = players.get(chatId)
     bot.sendMessage(chatId, `Вы уже являетесь создателем игры: \`${sessionCode}\`\n` + messages.team_select.text,
@@ -88,11 +91,11 @@ bot.onText(/\/join/, (msg) => {
   bot.sendMessage(chatId, 'Введите токен', {
     parse_mode: 'Markdown',
   });
-  
+
   bot.once("text", (msg) => {
     const session = msg.text;
     const game = sessions.get(session);
-  
+
     if (!players.has(chatId) && sessions.has(session)) {
       players.set(chatId, session);
       game.addPlayer(chatId, msg.chat.username);
@@ -124,12 +127,12 @@ bot.on('callback_query', (callbackQuery) => {
   const sessionCode = players.get(chatId);
   const game = sessions.get(sessionCode);
 
-  const teamPlayers = ()=> {
+  const teamPlayers = () => {
     let players = [[], []]
-    game.team1.forEach(element => {
+    game.teams[0].forEach(element => {
       players[0].push(game.name(element))
     });
-    game.team2.forEach(element => {
+    game.teams[1].forEach(element => {
       players[1].push(game.name(element))
     });
     return players
@@ -159,8 +162,8 @@ bot.on('callback_query', (callbackQuery) => {
 
     //===Teams===
     case 'team1':
-      if (!game.team1.includes(chatId) && !game.team2.includes(chatId)) {
-        game.toTeam(chatId, 1);
+      if (!game.teams[0].includes(chatId) && !game.teams[1].includes(chatId)) {
+        game.teams[0].push(chatId);
         teams = teamPlayers();
         bot.editMessageText(`Комманда 👻: ${teams[0].toString()}\nКомманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
@@ -178,8 +181,8 @@ bot.on('callback_query', (callbackQuery) => {
       }
       break;
     case 'team2':
-      if (!game.team1.includes(chatId) && !game.team2.includes(chatId)) {
-        game.toTeam(chatId, 2);
+      if (!game.teams[0].includes(chatId) && !game.teams[1].includes(chatId)) {
+        game.teams[1].push(chatId);
         teams = teamPlayers();
         bot.editMessageText(`Команда 👻: ${teams[0].toString()}\nКоманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
@@ -197,8 +200,8 @@ bot.on('callback_query', (callbackQuery) => {
       }
       break;
     case 'team_switch':
-      if (game.team1.includes(chatId)) { delete game.team1[game.team1.indexOf(chatId)] }
-      if (game.team2.includes(chatId)) { delete game.team2[game.team2.indexOf(chatId)] }
+      if (game.teams[0].includes(chatId)) { delete game.teams[0][game.teams[0].indexOf(chatId)] }
+      if (game.teams[1].includes(chatId)) { delete game.teams[1][game.teams[1].indexOf(chatId)] }
       teams = teamPlayers();
       bot.editMessageText(
         messages.team_select.text +
@@ -218,8 +221,15 @@ bot.on('callback_query', (callbackQuery) => {
           `\nКомманда 👻: ${teams[0].toString()}\nКоманда 👽: ${teams[1].toString()}`, {
           chat_id: chatId,
           message_id: msg.message_id,
+          parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: messages.team_ready.keyboard
+          }
+        });
+        bot.sendMessage(chatId, messages.game_start.text, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: messages.game_start.keyboard
           }
         });
       } else {
