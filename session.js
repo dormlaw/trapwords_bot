@@ -1,22 +1,24 @@
 'use strict'
 class Session {
     constructor(id, name) {
+        this.creator;
         this.players = new Map;
-        this.teams = [ [],[] ];
+        this.teams = [[], []];
         this.leaders = [];
-        this.counter = [];
-        this.lobby = [];
-        //сделать это через Set
-        this.ready = []
+        this.counter = 0;
+        this.lobby = new Set;
+        this.ready = new Set;
         if (id && name) {
             this.addPlayer(id, name);
         }
     }
 
-    static code() {
-        const possibleChars = [
-            "🍎", "🍊", "🍓", "🍉", "🍇", "🍒", "🍑", "🥑", "🥦", "🌽", "🌶️", "🥕", "🥔"
-        ];
+    static code(possibleChars) {
+        if (!possibleChars) {
+            possibleChars = [
+                "🍎", "🍊", "🍓", "🍉", "🍇", "🍒", "🍑", "🥑", "🥦", "🌽", "🌶️", "🥕", "🥔"
+            ];
+        }
         let sessionCode = "";
         for (let i = 0; i < 4; i++) {
             const randomIndex = Math.floor(Math.random() * possibleChars.length);
@@ -33,8 +35,8 @@ class Session {
     fairPlay() {
         let isFair = false
         if (
-            (this.teams[0].length >= 2) &&
-            (this.teams[1].length >= 2) &&
+            (this.teams[0].length >= 1) &&
+            (this.teams[1].length >= 1) &&
             (((this.teams[0].length % this.teams[1].length) <= 1) || ((this.teams[1].length % this.teams[0].length) <= 1))) {
             isFair = true
         }
@@ -43,19 +45,19 @@ class Session {
     agree(type) {
         if (type === 'check') {
             let isAgreed = false
-            if (this.ready.length === this.players.size) {
+            if (this.ready.size === this.lobby.size) {
                 isAgreed = true
             }
             return isAgreed
         }
         if (type === 'all') {
             for (let player of this.players.keys()) {
-                this.lobby.push(player)
+                this.lobby.add(player)
             }
         }
         if (Array.isArray(type)) {
             for (let i = 0; i = type.length - 1; i++) {
-                this.lobby.push(type[i])
+                this.lobby.add(type[i])
             }
         }
     }

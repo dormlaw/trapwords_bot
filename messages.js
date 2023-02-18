@@ -86,11 +86,15 @@ const messages = {
     ]
   },
   team_ready: {
-    text: 'Команды готовы\n*Состав команд*',
+    text: 'Ожидание начала игры...\n*Состав команд*',
     keyboard: [
       [{ text: 'Сменить команду', callback_data: 'team_switch' }],
       [{ text: 'Готов', callback_data: 'team_ready' }]
-    ]
+    ],
+    creatorKeyboard: [
+      [{ text: 'Обновить список', callback_data: 'team_refresh' }],
+      [{ text: 'Начать игру', callback_data: 'game_start' }]
+    ],
   },
   game_start: {
     text: 'Начало игры',
